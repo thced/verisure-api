@@ -17,15 +17,21 @@ var formData = {
 // enabling cookies
 request = request.defaults({ jar: true });
 
+
+
+var login_url = config.domain + config.login_path;
+var alarmstatus_url = config.domain + config.alarmstatus_path + Date.now();
+var climatedata_url = config.domain + config.climatedata_path + Date.now();
+
+
 // authenticate
-request.post({ url: config.domain + config.login_url, form: formData }, function optionalCallback(err, httpResponse, body) {
+request.post({ url: login_url, form: formData }, function optionalCallback(err, httpResponse, body) {
 	if (err) {
 		return console.error( 'upload failed:', err );
 	}
 	console.log( 'Server responded with:', body );
 
 	// get alarm status
-	var alarmstatus_url = config.domain + config.alarmstatus_path + Date.now();
 	request( alarmstatus_url, function (error, response, body) {
 		if (!error && response.statusCode == 200) {
 			console.log( 'remotecontrol', body );
@@ -33,7 +39,6 @@ request.post({ url: config.domain + config.login_url, form: formData }, function
 	});
 
 	// get climate data
-	var climatedata_url = config.domain + config.climatedata_path + Date.now();
 	request( climatedata_url, function (error, response, body) {
 		if (!error && response.statusCode == 200) {
 			console.log( 'climatedevice', body );
