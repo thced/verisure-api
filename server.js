@@ -18,21 +18,23 @@ var formData = {
 request = request.defaults({ jar: true });
 
 // authenticate
-request.post({ url: config.login_url, form: formData }, function optionalCallback(err, httpResponse, body) {
+request.post({ url: config.domain + config.login_url, form: formData }, function optionalCallback(err, httpResponse, body) {
 	if (err) {
 		return console.error( 'upload failed:', err );
 	}
 	console.log( 'Server responded with:', body );
 
 	// get alarm status
-	request('https://mypages.verisure.com/remotecontrol?_=' + Date.now(), function (error, response, body) {
+	var alarmstatus_url = config.domain + config.alarmstatus_path + Date.now();
+	request( alarmstatus_url, function (error, response, body) {
 		if (!error && response.statusCode == 200) {
 			console.log( 'remotecontrol', body );
 		}
 	});
 
 	// get climate data
-	request('https://mypages.verisure.com/overview/climatedevice?_=' + Date.now(), function (error, response, body) {
+	var climatedata_url = config.domain + config.climatedata_path + Date.now();
+	request( climatedata_url, function (error, response, body) {
 		if (!error && response.statusCode == 200) {
 			console.log( 'climatedevice', body );
 		}
