@@ -1,4 +1,5 @@
-// domain & path can be read from login form 
+// domain & path can be read from login form
+// rename to config.js
 
 module.exports = {
 	username: '',

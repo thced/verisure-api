@@ -14,8 +14,7 @@ var alarmFields = [ 'status' ],
 // form data from login form - some hidden fields weren't needed
 var formData = {
 	j_username: config.username,
-	j_password: config.password,
-	'spring-security-redirect': '/se/start.html'
+	j_password: config.password
 };
 
 
