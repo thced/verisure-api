@@ -26,7 +26,6 @@ request = request.defaults({ jar: true });
 function requestPromise ( options ) {
 	return new Promise( function ( resolve, reject ) {
 		request( options, function requestCallback( error, response, body ) {
-			console.log( response.headers['content-type'] );
 
 			// handle reponse errors
 			if ( options.json && response.headers['content-type'] == 'text/html;charset=UTF-8' )
@@ -34,6 +33,7 @@ function requestPromise ( options ) {
 			else if ( body.status == 'error' )
 				error = body;
 
+			// resolve / reject
 			if ( error ) reject( error );
 			else resolve( body );
 		});
