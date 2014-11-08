@@ -8,14 +8,17 @@ var config = require('./config');
 var alarmStatus = {},
 	climateData = {};
 
-var alarmFields = [ 'status' ],
+var alarmFields = [ 'status', 'date' ],
 	climateFields = [ 'location', 'humidity', 'temperature', 'timestamp' ];
 
-// form data from login form - some hidden fields weren't needed
+// form data for login
 var formData = {
 	j_username: config.username,
 	j_password: config.password
 };
+
+var defaultTimeout = 60 * 1000, 	// 1 min
+	errorTimeout = 10 * 60 * 1000; 	// 10 min
 
 
 // enabling cookies
@@ -33,8 +36,13 @@ function requestPromise ( options ) {
 				error = body;
 
 			// resolve / reject
-			if ( error ) reject( error );
-			else resolve( body );
+			if ( error ) {
+
+				reject( error );
+			}
+			else {
+				resolve( body );
+			}
 		});
 	});
 }
@@ -55,31 +63,44 @@ function getClimateData () {
 }
 
 function getData () {
-	return Promise.all([ getAlarmStatus(), getClimateData() ]);
+	return Promise.all([ getAlarmStatus(), getClimateData() ] ).then( parseData );
 }
 
 function parseData ( data ) {
 	var alarmRawData = data[ 0 ][ 0 ],
-		climateRawData = data[ 1 ];
+		climateRawData = data[ 1 ],
+		newAlarmStatus, newClimateData;
 
-	alarmStatus = filterByKeys( alarmRawData, alarmFields );
-	climateData = climateRawData.map( function ( dataSet ) {
+	newAlarmStatus = filterByKeys( alarmRawData, alarmFields );
+	newClimateData = climateRawData.map( function ( dataSet ) {
 		return filterByKeys( dataSet, climateFields );
 	});
 
-	console.log( 'alarmStatus', alarmStatus );
-	console.log( 'climateData', climateData );
+	if ( JSON.stringify( newAlarmStatus ) != JSON.stringify( alarmStatus ) ) {
+		alarmStatus = newAlarmStatus;
+		console.log( 'alarmStatus', alarmStatus );
+	}
+	if ( JSON.stringify( newClimateData ) != JSON.stringify( climateData ) ) {
+		climateData = newClimateData;
+		console.log( 'climateData', climateData );
+	}
+
+	setTimeout( getData, defaultTimeout );
 }
 
 function onError ( err ) {
 	console.log( 'Nay', err );
+	setTimeout( getData, errorTimeout );
 }
 
+function init() {
+	authenticate()
+		.then( getData )
+		.catch( onError );
 
-authenticate()
-	.then( getData )
-	.then( parseData )
-	.catch( onError );
+}
+
+init();
 
 /*
 
