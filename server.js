@@ -5,7 +5,11 @@ var restify = require('restify');
 var request = require('request');
 var config = require('./config');
 
+var alarmStatus = {},
+	climateData = {};
 
+var alarmFields = [ 'status' ],
+	climateFields = [ 'location', 'humidity', 'temperature', 'timestamp' ];
 
 // form data from login form - some hidden fields weren't needed
 var formData = {
@@ -47,8 +51,13 @@ function getData () {
 	return Promise.all([ getAlarmStatus(), getClimateData() ]);
 }
 
-function saveData ( data ) {
-	console.log( 'Yay', data );
+function parseData ( data ) {
+	alarmStatus = filterByKeys( data[ 0 ][ 0 ], alarmFields );
+	climateData = data[ 1 ].map( function ( dataSet ) {
+		return filterByKeys( dataSet, climateFields );
+	});
+	console.log( 'alarmStatus', alarmStatus );
+	console.log( 'climateData', climateData );
 }
 
 function onError ( err ) {
@@ -59,7 +68,7 @@ function onError ( err ) {
 
 authenticate()
 	.then( getData )
-	.then( saveData )
+	.then( parseData )
 	.catch( onError );
 
 /*
@@ -78,3 +87,15 @@ server.listen(8080, function() {
 });
 
 */
+
+function filterByKeys ( obj, keysArr ) {
+	var filtered = {};
+
+	function filter ( key ) {
+		if ( keysArr.indexOf( key ) != -1 ) filtered[ key ] = obj[ key ];
+	}
+	Object.keys( obj ).forEach( filter );
+
+	return filtered;
+}
+
