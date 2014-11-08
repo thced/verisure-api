@@ -26,6 +26,14 @@ request = request.defaults({ jar: true });
 function requestPromise ( options ) {
 	return new Promise( function ( resolve, reject ) {
 		request( options, function requestCallback( error, response, body ) {
+			console.log( response.headers['content-type'] );
+
+			// handle reponse errors
+			if ( options.json && response.headers['content-type'] == 'text/html;charset=UTF-8' )
+				error = { status: 'error', message: 'Expected JSON, but got html' };
+			else if ( body.status == 'error' )
+				error = body;
+
 			if ( error ) reject( error );
 			else resolve( body );
 		});
@@ -34,7 +42,7 @@ function requestPromise ( options ) {
 
 function authenticate () {
 	var auth_url = config.domain + config.auth_path;
-	return requestPromise({ url: auth_url, form: formData, method: 'POST' });
+	return requestPromise({ url: auth_url, form: formData, method: 'POST', json: true });
 }
 
 function getAlarmStatus () {
@@ -52,10 +60,14 @@ function getData () {
 }
 
 function parseData ( data ) {
-	alarmStatus = filterByKeys( data[ 0 ][ 0 ], alarmFields );
-	climateData = data[ 1 ].map( function ( dataSet ) {
+	var alarmRawData = data[ 0 ][ 0 ],
+		climateRawData = data[ 1 ];
+
+	alarmStatus = filterByKeys( alarmRawData, alarmFields );
+	climateData = climateRawData.map( function ( dataSet ) {
 		return filterByKeys( dataSet, climateFields );
 	});
+
 	console.log( 'alarmStatus', alarmStatus );
 	console.log( 'climateData', climateData );
 }
@@ -65,7 +77,9 @@ function onError ( err ) {
 }
 
 
+getData().catch( onError );
 
+/*
 authenticate()
 	.then( getData )
 	.then( parseData )
