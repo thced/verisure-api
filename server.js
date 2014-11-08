@@ -77,9 +77,6 @@ function onError ( err ) {
 }
 
 
-getData().catch( onError );
-
-/*
 authenticate()
 	.then( getData )
 	.then( parseData )
