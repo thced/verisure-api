@@ -9,6 +9,7 @@
   "author": "Balázs Suhajda",
   "license": "ISC",
   "dependencies": {
+    "es6-promise": "^2.0.0",
     "request": "^2.47.0",
     "restify": "^2.8.3"
   }

@@ -1,8 +1,9 @@
+// let get rid of callbacks
+require('es6-promise').polyfill();
+
 var restify = require('restify');
 var request = require('request');
 var config = require('./config');
-
-
 
 
 
@@ -18,35 +19,48 @@ var formData = {
 request = request.defaults({ jar: true });
 
 
-
-var login_url = config.domain + config.login_path;
-var alarmstatus_url = config.domain + config.alarmstatus_path + Date.now();
-var climatedata_url = config.domain + config.climatedata_path + Date.now();
-
-
-// authenticate
-request.post({ url: login_url, form: formData }, function optionalCallback(err, httpResponse, body) {
-	if (err) {
-		return console.error( 'upload failed:', err );
-	}
-	console.log( 'Server responded with:', body );
-
-	// get alarm status
-	request( alarmstatus_url, function (error, response, body) {
-		if (!error && response.statusCode == 200) {
-			console.log( 'remotecontrol', body );
-		}
+function requestPromise ( options ) {
+	return new Promise( function ( resolve, reject ) {
+		request( options, function requestCallback( error, response, body ) {
+			if ( error ) reject( error );
+			else resolve( body );
+		});
 	});
+}
 
-	// get climate data
-	request( climatedata_url, function (error, response, body) {
-		if (!error && response.statusCode == 200) {
-			console.log( 'climatedevice', body );
-		}
-	});
-});
+function authenticate () {
+	var auth_url = config.domain + config.auth_path;
+	return requestPromise({ url: auth_url, form: formData, method: 'POST' });
+}
+
+function getAlarmStatus () {
+	var alarmstatus_url = config.domain + config.alarmstatus_path + Date.now();
+	return requestPromise({ url: alarmstatus_url, json: true });
+}
+
+function getClimateData () {
+	var climatedata_url = config.domain + config.climatedata_path + Date.now();
+	return requestPromise({ url: climatedata_url, json: true });
+}
+
+function getData () {
+	return Promise.all([ getAlarmStatus(), getClimateData() ]);
+}
+
+function saveData ( data ) {
+	console.log( 'Yay', data );
+}
+
+function onError ( err ) {
+	console.log( 'Nay', err );
+}
 
 
+
+authenticate()
+	.then( getData )
+	.then( saveData )
+	.catch( onError );
 
 /*
 
