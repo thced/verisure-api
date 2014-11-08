@@ -30,7 +30,7 @@ function requestPromise ( options ) {
 		request( options, function requestCallback( error, response, body ) {
 
 			// handle reponse errors
-			if ( options.json && response.headers['content-type'] == 'text/html;charset=UTF-8' )
+			if ( options.json && response.headers['content-type'] != 'application/json;charset=UTF-8' )
 				error = { status: 'error', message: 'Expected JSON, but got html' };
 			else if ( body.status == 'error' )
 				error = body;
@@ -49,7 +49,7 @@ function requestPromise ( options ) {
 
 function authenticate () {
 	var auth_url = config.domain + config.auth_path;
-	return requestPromise({ url: auth_url, form: formData, method: 'POST', json: true });
+	return requestPromise({ url: auth_url, form: formData, method: 'POST' });
 }
 
 function getAlarmStatus () {
