@@ -2,14 +2,15 @@
   "name": "verisure-api",
   "version": "0.0.0",
   "description": "get status of verisure alarm",
-  "main": "server.js",
+  "main": "verisure-api.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "verisure-api.js"
   },
   "author": "Balázs Suhajda",
   "license": "WTFPL",
   "dependencies": {
     "es6-promise": "^2.0.0",
+    "object-assign": "^1.0.0",
     "request": "^2.47.0",
     "restify": "^2.8.3"
   }
