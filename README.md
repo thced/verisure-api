@@ -11,4 +11,5 @@ var config = {
 	onData: function( data ) { console.log( 'We got data', data );
 };
 
+
 require('./verisure-api')( config );
