@@ -193,15 +193,26 @@ function engage() {
 }
 
 var publicApi = {
+	/**
+	 * Function adds a change event listener to one of the services
+	 * @param {String} service - name of service to watch for changes
+	 * @param {Function} callback - function to execute on change
+	 * @returns {Error} - if something goes wrong
+	 */
 	on: function( service, callback ) {
 		if ( !listeners[ service ] ) return new Error( 'No such service! Subscribe to alarmChange or climateChange!' );
 		if ( typeof callback != 'function' ) return new Error( 'Please provide a function as callback' );
 		// we are already subscribed, but no reason to Error
 		if ( ~listeners[ service ].indexOf( callback ) ) return;
 		listeners[ service ].push( callback );
-		console.log ( listeners );
 	},
 
+	/**
+	 * Function removes a change event listener
+	 * @param {String} service - name of service to stop listening to
+	 * @param {Function=} callback - callback to remove or if not specified, all listeners to service will be removed
+	 * @returns {Error} - if something goes wrong
+	 */
 	off: function( service, callback ) {
 		if ( !listeners[ service ] ) return new Error( 'No such service! Unsubscribe from alarmChange or climateChange!' );
 		if ( typeof callback == 'function' ) {
@@ -210,7 +221,6 @@ var publicApi = {
 		} else if ( typeof callback == 'undefined' ) {
 			listeners[ service ] = [];
 		}
-		console.log ( listeners );
 //	},
 //
 //		TODO: some way to pass a promise before polling completes
@@ -223,6 +233,11 @@ var publicApi = {
 	}
 };
 
+/**
+ * Verisure api requires username & pass fo setup, will then return public api
+ * @param {Object} options - config options containing at minimum username & password
+ * @returns {{on: on, off: off, get: get}}
+ */
 function setup ( options ) {
 	config = objectAssign( defaults, options );
 
