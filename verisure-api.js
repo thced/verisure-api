@@ -12,7 +12,12 @@ var formData,
 	authenticated = false,
 	config = {},
 	alarmStatus = {},
-	climateData = {};
+	climateData = {},
+
+	listeners = {
+		climateChange: [],
+		alarmChange: []
+	};
 
 var defaults = {
 	username: '',
@@ -22,14 +27,13 @@ var defaults = {
 	alarmstatus_path: '/remotecontrol?_=',
 	climatedata_path: '/overview/climatedevice?_=',
 	alarmFields: [ 'status', 'date' ],
-	climateFields: [ 'location', 'humidity', 'temperature', 'timestamp' ],
-	onData: function ( data ) { console.log( data ); },
-	onError: function ( err ) { console.log( err ); }
+	climateFields: [ 'location', 'humidity', 'temperature', 'timestamp' ]
 };
 
 // request timeouts
-var defaultTimeout = 60 * 1000, 	// 1 min
-	errorTimeout = 10 * 60 * 1000; 	// 10 min
+var alarmFetchTimeout = 30 * 1000,			// 0.5 min
+	climateFetchTimeout = 30 * 60 * 1000, 	// 30 min
+	errorTimeout = 10 * 60 * 1000; 			// 10 min
 
 // enabling cookies
 request = request.defaults({ jar: true });
@@ -52,6 +56,12 @@ function filterByKeys ( obj, keysArr ) {
 	return filtered;
 }
 
+function dispatch( service, data ) {
+	listeners[ service ].forEach( function ( listener ) {
+		listener( data );
+	});
+}
+
 /**
  * Request promise
  * @param {Object} options - options for request (url, method, .. etc)
@@ -61,11 +71,10 @@ function requestPromise ( options ) {
 	'use strict';
 	return new Promise( function ( resolve, reject ) {
 		request( options, function requestCallback( error, response, body ) {
-
-			// handle reponse errors
-			if ( options.json && response.headers['content-type'] != 'application/json;charset=UTF-8' )
-				error = { status: 'error', message: 'Expected JSON, but got html' };
-			else if ( body.status == 'error' )	{
+			// handle response errors
+			if ( options.json && response.headers['content-type'] != 'application/json;charset=UTF-8' ) {
+				error = { state: 'error', message: 'Expected JSON, but got html' };
+			} else if ( body.state == 'error' )	{
 				error = body;
 				authenticated = false;
 			}
@@ -96,7 +105,7 @@ function authenticate () {
  *
  * @returns {Promise}
  */
-function getAlarmStatus () {
+function fetchAlarmStatus () {
 	'use strict';
 	var alarmstatus_url = config.domain + config.alarmstatus_path + Date.now();
 	return requestPromise({ url: alarmstatus_url, json: true });
@@ -106,56 +115,68 @@ function getAlarmStatus () {
  *
  * @returns {Promise}
  */
-function getClimateData () {
+function fetchClimateData () {
 	'use strict';
 	var climatedata_url = config.domain + config.climatedata_path + Date.now();
 	return requestPromise({ url: climatedata_url, json: true });
 }
 
-/**
- *
- * @returns {*|Promise}
- */
-function getData () {
-	'use strict';
-	return Promise.all([ getAlarmStatus(), getClimateData() ] ).then( parseData );
+function parseAlarmData ( data ) {
+	data = filterByKeys( data[ 0 ], config.alarmFields );
+
+	setTimeout( pollAlarmStatus, alarmFetchTimeout );
+
+	// check for alarm data changes
+	if ( JSON.stringify( data ) != JSON.stringify( alarmStatus ) ) {
+		alarmStatus = data;
+		dispatch( 'alarmChange', data );
+	}
+	return Promise.resolve( data );
 }
 
 /**
  *
  * @param data
  */
-function parseData ( data ) {
+function parseClimateData ( data ) {
 	'use strict';
-
-	var alarmRawData = data[ 0 ][ 0 ],
-		climateRawData = data[ 1 ],
-		newAlarmStatus, newClimateData;
-
-	newAlarmStatus = filterByKeys( alarmRawData, config.alarmFields );
-	newClimateData = climateRawData.map( function ( dataSet ) {
+	data = data.map( function ( dataSet ) {
 		return filterByKeys( dataSet, config.climateFields );
 	});
 
-	setTimeout( engage, defaultTimeout );
-
-	// check for alarm data changes
-	if ( JSON.stringify( newAlarmStatus ) != JSON.stringify( alarmStatus ) ) {
-		alarmStatus = newAlarmStatus;
-		console.log( 'alarmStatus', alarmStatus );
-		config.onData( objectAssign( {}, alarmStatus ));
-	}
+	setTimeout( pollClimateData, climateFetchTimeout );
 
 	// check for climate data changes
-	if ( JSON.stringify( newClimateData ) != JSON.stringify( climateData ) ) {
-		climateData = newClimateData;
-		console.log( 'climateData', climateData );
-		config.onData( objectAssign( {}, climateData ));
+	if ( JSON.stringify( data ) != JSON.stringify( climateData ) ) {
+		climateData = data;
+		dispatch( 'climateChange', data );
 	}
+	return Promise.resolve( data );
+}
+
+function pollAlarmStatus () {
+	'use strict';
+	return fetchAlarmStatus().then( parseAlarmData );
+}
+
+function pollClimateData () {
+	'use strict';
+	return fetchClimateData().then( parseClimateData );
+}
+
+function getAlarmStatus() {
+	if ( Object.keys( alarmStatus ).length === 0 ) return pollAlarmStatus;
+	else return Promise.resolve( climateData );
+}
+
+function getClimateData() {
+	console.log( 'getAlarmStatus', climateData );
+	if ( Object.keys( climateData ).length === 0 ) return;
+	else return Promise.resolve( climateData );
 }
 
 /**
- *
+ * Error handler. When either request causes an error, invalidate authentication and wait to avoid getting blocked
  * @param err
  */
 function onError ( err ) {
@@ -166,11 +187,43 @@ function onError ( err ) {
 
 function engage() {
 	authenticate()
-		.then( getData )
+		.then( pollAlarmStatus )
+		.then( pollClimateData )
 		.catch( onError );
 }
 
-module.exports = function setup( options ) {
+var publicApi = {
+	on: function( service, callback ) {
+		if ( !listeners[ service ] ) return new Error( 'No such service! Subscribe to alarmChange or climateChange!' );
+		if ( typeof callback != 'function' ) return new Error( 'Please provide a function as callback' );
+		// we are already subscribed, but no reason to Error
+		if ( ~listeners[ service ].indexOf( callback ) ) return;
+		listeners[ service ].push( callback );
+		console.log ( listeners );
+	},
+
+	off: function( service, callback ) {
+		if ( !listeners[ service ] ) return new Error( 'No such service! Unsubscribe from alarmChange or climateChange!' );
+		if ( typeof callback == 'function' ) {
+			var i = listeners[ service ].indexOf( callback );
+			if ( i != -1 ) listeners[ service ].splice( i, 1 );
+		} else if ( typeof callback == 'undefined' ) {
+			listeners[ service ] = [];
+		}
+		console.log ( listeners );
+//	},
+//
+//		TODO: some way to pass a promise before polling completes
+//	get: function( service ) {
+//		console.log( 'public get', service );
+//		if ( service == 'alarmStatus' ) return getAlarmStatus();
+//		if ( service == 'climateData' ) return getClimateData();
+//
+//		return Promise.reject( 'No such service! Use alarmStatus or climateData' );
+	}
+};
+
+function setup ( options ) {
 	config = objectAssign( defaults, options );
 
 	// form data for login
@@ -179,4 +232,10 @@ module.exports = function setup( options ) {
 		j_password: config.password
 	};
 	engage();
+
+	return publicApi;
+}
+
+module.exports = {
+	setup: setup
 };
