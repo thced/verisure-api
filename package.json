@@ -6,12 +6,15 @@
   "scripts": {
     "start": "verisure-api.js"
   },
+	"repository": {
+		"type": "git",
+		"url": "git://github.com/suhajdab/verisure-api.git"
+	},
   "author": "Balázs Suhajda",
   "license": "WTFPL",
   "dependencies": {
     "es6-promise": "^2.0.0",
     "object-assign": "^1.0.0",
-    "request": "^2.47.0",
-    "restify": "^2.8.3"
+    "request": "^2.47.0"
   }
 }

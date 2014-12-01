@@ -234,7 +234,7 @@ var publicApi = {
 };
 
 /**
- * Verisure api requires username & pass fo setup, will then return public api
+ * Verisure api requires username & pass for setup, will then return public api
  * @param {Object} options - config options containing at minimum username & password
  * @returns {{on: on, off: off, get: get}}
  */
