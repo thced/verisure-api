@@ -37,6 +37,8 @@ var alarmFetchTimeout = 30 * 1000,			// 0.5 min
 // enabling cookies
 request = request.defaults({ jar: true });
 
+/* UTILITY */
+
 /**
  * Utility function to filter out unwanted object properties by key
  * @param {Object} obj - Object to be filtered
@@ -94,6 +96,8 @@ function requestPromise ( options ) {
 		});
 	});
 }
+
+/* PRIVATE */
 
 /**
  *
@@ -196,6 +200,8 @@ function engage() {
 		.catch( onError );
 }
 
+
+/* PUBLIC */
 var publicApi = {
 
 	/**
