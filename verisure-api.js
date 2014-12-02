@@ -8,12 +8,11 @@ var objectAssign = require('object-assign');
 // ES6 Promises
 require('es6-promise').polyfill();
 
-var formData,
+var formData, firstAlarmPoll, firstClimatePoll,
 	authenticated = false,
 	config = {},
 	alarmStatus = {},
 	climateData = {},
-
 	listeners = {
 		climateChange: [],
 		alarmChange: []
@@ -56,6 +55,11 @@ function filterByKeys ( obj, keysArr ) {
 	return filtered;
 }
 
+/**
+ * Function to dispatch change event for a service
+ * @param {String} service - service name
+ * @param {Object} data - data to dispatch to listeners
+ */
 function dispatch( service, data ) {
 	listeners[ service ].forEach( function ( listener ) {
 		listener( data );
@@ -165,13 +169,12 @@ function pollClimateData () {
 }
 
 function getAlarmStatus() {
-	if ( Object.keys( alarmStatus ).length === 0 ) return pollAlarmStatus;
-	else return Promise.resolve( climateData );
+	if ( Object.keys( alarmStatus ).length === 0 ) return firstAlarmPoll;
+	else return Promise.resolve( alarmStatus );
 }
 
 function getClimateData() {
-	console.log( 'getAlarmStatus', climateData );
-	if ( Object.keys( climateData ).length === 0 ) return;
+	if ( Object.keys( climateData ).length === 0 ) return firstClimatePoll;
 	else return Promise.resolve( climateData );
 }
 
@@ -186,13 +189,15 @@ function onError ( err ) {
 }
 
 function engage() {
-	authenticate()
-		.then( pollAlarmStatus )
+	firstAlarmPoll = authenticate()
+		.then( pollAlarmStatus );
+	firstClimatePoll = firstAlarmPoll
 		.then( pollClimateData )
 		.catch( onError );
 }
 
 var publicApi = {
+
 	/**
 	 * Function adds a change event listener to one of the services
 	 * @param {String} service - name of service to watch for changes
@@ -208,7 +213,7 @@ var publicApi = {
 	},
 
 	/**
-	 * Function removes a change event listener
+	 * Function removes a change event listener for a specified service
 	 * @param {String} service - name of service to stop listening to
 	 * @param {Function=} callback - callback to remove or if not specified, all listeners to service will be removed
 	 * @returns {Error} - if something goes wrong
@@ -221,36 +226,39 @@ var publicApi = {
 		} else if ( typeof callback == 'undefined' ) {
 			listeners[ service ] = [];
 		}
-//	},
-//
-//		TODO: some way to pass a promise before polling completes
-//	get: function( service ) {
-//		console.log( 'public get', service );
-//		if ( service == 'alarmStatus' ) return getAlarmStatus();
-//		if ( service == 'climateData' ) return getClimateData();
-//
-//		return Promise.reject( 'No such service! Use alarmStatus or climateData' );
+	},
+
+	/**
+	 * Function a promise for the recent value of the specified service
+	 * @param service
+	 * @returns {*}
+	 */
+	get: function( service ) {
+		if ( service == 'alarmStatus' ) return getAlarmStatus();
+		if ( service == 'climateData' ) return getClimateData();
+
+		return Promise.reject( 'No such service! Use alarmStatus or climateData' );
 	}
 };
 
 /**
  * Verisure api requires username & pass for setup, will then return public api
- * @param {Object} options - config options containing at minimum username & password
+ * @param {Object} options - config options containing at least username & password
  * @returns {{on: on, off: off, get: get}}
  */
 function setup ( options ) {
 	config = objectAssign( defaults, options );
 
+	if ( !config.username && !config.password ) throw "Missing required username and password for verisure api";
 	// form data for login
 	formData = {
 		j_username: config.username,
 		j_password: config.password
 	};
+
 	engage();
 
 	return publicApi;
 }
 
-module.exports = {
-	setup: setup
-};
+module.exports.setup = setup;
