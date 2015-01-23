@@ -1,15 +1,15 @@
 {
   "name": "verisure-api",
-  "version": "0.0.0",
+  "version": "0.9.0",
   "description": "get status of verisure alarm",
   "main": "verisure-api.js",
   "scripts": {
     "start": "verisure-api.js"
   },
-	"repository": {
-		"type": "git",
-		"url": "git://github.com/suhajdab/verisure-api.git"
-	},
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/suhajdab/verisure-api.git"
+  },
   "author": "Balázs Suhajda",
   "license": "WTFPL",
   "dependencies": {
