@@ -5,21 +5,21 @@ creating a basic module to poll verisure api to be able to trigger home automati
 
 Usage:
 
-var config = {
-	username: 'yourverisure@email.com',
-	password: 'yourverisurepassword'
-};
+    var config = {
+	    username: 'yourverisure@email.com',
+	    password: 'yourverisurepassword'
+    };
 
 
-var verisureApi = require('./verisure-api').setup( config );
+    var verisureApi = require('./verisure-api').setup( config );
 
 
-// alarm state changes
-verisureApi.on( 'alarmChange', log );
+    // alarm state changes
+    verisureApi.on( 'alarmChange', log );
 
-// climate measurement changes
-verisureApi.on( 'climateChange', log );
+    // climate measurement changes
+    verisureApi.on( 'climateChange', log );
 
-function log ( data ) {
-	console.log( data );
-}
+    function log ( data ) {
+    	console.log( data );
+    }
