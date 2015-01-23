@@ -2,8 +2,10 @@
 	TODO: sanity check, require user/pass
  */
 
+
+
 var request = require('request');
-//  ES6 object cloning
+// ES6 object cloning
 var objectAssign = require('object-assign');
 // ES6 Promises
 require('es6-promise').polyfill();
@@ -50,7 +52,9 @@ function filterByKeys ( obj, keysArr ) {
 	var filtered = {};
 
 	function filter ( key ) {
-		if ( keysArr.indexOf( key ) != -1 ) filtered[ key ] = obj[ key ];
+		if ( keysArr.indexOf( key ) !== -1 ) {
+			filtered[ key ] = obj[ key ];
+		}
 	}
 	Object.keys( obj ).forEach( filter );
 
@@ -63,6 +67,8 @@ function filterByKeys ( obj, keysArr ) {
  * @param {Object} data - data to dispatch to listeners
  */
 function dispatch( service, data ) {
+	"use strict";
+
 	listeners[ service ].forEach( function ( listener ) {
 		listener( data );
 	});
@@ -78,9 +84,9 @@ function requestPromise ( options ) {
 	return new Promise( function ( resolve, reject ) {
 		request( options, function requestCallback( error, response, body ) {
 			// handle response errors
-			if ( options.json && response.headers['content-type'] != 'application/json;charset=UTF-8' ) {
+			if ( options.json && response.headers['content-type'] !== 'application/json;charset=UTF-8' ) {
 				error = { state: 'error', message: 'Expected JSON, but got html' };
-			} else if ( body.state == 'error' )	{
+			} else if ( body.state === 'error' )	{
 				error = body;
 				authenticated = false;
 			}
@@ -88,8 +94,7 @@ function requestPromise ( options ) {
 			// resolve / reject
 			if ( error ) {
 				reject( error );
-			}
-			else {
+			} else {
 				authenticated = true;
 				resolve( body );
 			}
@@ -105,8 +110,14 @@ function requestPromise ( options ) {
  */
 function authenticate () {
 	'use strict';
-	var auth_url = config.domain + config.auth_path;
-	return authenticated ? Promise.resolve( true ) : requestPromise({ url: auth_url, form: formData, method: 'POST' });
+	var auth_url = config.domain + config.auth_path,
+		requestParams = {
+			url: auth_url,
+			form: formData,
+			method: 'POST'
+		};
+
+	return authenticated ? Promise.resolve( true ) : requestPromise( requestParams );
 }
 
 /**
@@ -115,6 +126,7 @@ function authenticate () {
  */
 function fetchAlarmStatus () {
 	'use strict';
+
 	var alarmstatus_url = config.domain + config.alarmstatus_path + Date.now();
 	return requestPromise({ url: alarmstatus_url, json: true });
 }
@@ -125,17 +137,25 @@ function fetchAlarmStatus () {
  */
 function fetchClimateData () {
 	'use strict';
+
 	var climatedata_url = config.domain + config.climatedata_path + Date.now();
 	return requestPromise({ url: climatedata_url, json: true });
 }
 
+/**
+ *
+ * @param data
+ * @returns {*}
+ */
 function parseAlarmData ( data ) {
+	"use strict";
+
 	data = filterByKeys( data[ 0 ], config.alarmFields );
 
 	setTimeout( pollAlarmStatus, alarmFetchTimeout );
 
 	// check for alarm data changes
-	if ( JSON.stringify( data ) != JSON.stringify( alarmStatus ) ) {
+	if ( JSON.stringify( data ) !== JSON.stringify( alarmStatus ) ) {
 		alarmStatus = data;
 		dispatch( 'alarmChange', data );
 	}
@@ -145,6 +165,7 @@ function parseAlarmData ( data ) {
 /**
  *
  * @param data
+ * @returns {*}
  */
 function parseClimateData ( data ) {
 	'use strict';
@@ -155,7 +176,7 @@ function parseClimateData ( data ) {
 	setTimeout( pollClimateData, climateFetchTimeout );
 
 	// check for climate data changes
-	if ( JSON.stringify( data ) != JSON.stringify( climateData ) ) {
+	if ( JSON.stringify( data ) !== JSON.stringify( climateData ) ) {
 		climateData = data;
 		dispatch( 'climateChange', data );
 	}
@@ -172,14 +193,34 @@ function pollClimateData () {
 	return fetchClimateData().then( parseClimateData );
 }
 
+function gotAlarmStatus () {
+	"use strict";
+	return Object.keys( alarmStatus ).length !== 0;
+}
+
+function gotClimateData () {
+	"use strict";
+	return Object.keys( climateData ).length !== 0;
+}
+
 function getAlarmStatus() {
-	if ( Object.keys( alarmStatus ).length === 0 ) return firstAlarmPoll;
-	else return Promise.resolve( alarmStatus );
+	"use strict";
+
+	if ( gotAlarmStatus() ) {
+		return Promise.resolve( alarmStatus );
+	} else {
+		return firstAlarmPoll;
+	}
 }
 
 function getClimateData() {
-	if ( Object.keys( climateData ).length === 0 ) return firstClimatePoll;
-	else return Promise.resolve( climateData );
+	"use strict";
+
+	if ( gotClimateData() ) {
+		return Promise.resolve( climateData );
+	} else {
+		return firstClimatePoll;
+	}
 }
 
 /**
@@ -188,11 +229,14 @@ function getClimateData() {
  */
 function onError ( err ) {
 	'use strict';
+
 	setTimeout( engage, errorTimeout );
 	config.onError( err );
 }
 
 function engage() {
+	"use strict";
+
 	firstAlarmPoll = authenticate()
 		.then( pollAlarmStatus );
 	firstClimatePoll = firstAlarmPoll
@@ -211,11 +255,26 @@ var publicApi = {
 	 * @returns {Error} - if something goes wrong
 	 */
 	on: function( service, callback ) {
-		if ( !listeners[ service ] ) return new Error( 'No such service! Subscribe to alarmChange or climateChange!' );
-		if ( typeof callback != 'function' ) return new Error( 'Please provide a function as callback' );
+		"use strict";
+
+		if ( !listeners[ service ] ) {
+			return new Error( 'No such service! Subscribe to alarmChange or climateChange!' );
+		}
+
+		if ( typeof callback !== 'function' ) {
+			return new Error( 'Please provide a function as callback' );
+		}
+
 		// we are already subscribed, but no reason to Error
-		if ( ~listeners[ service ].indexOf( callback ) ) return;
-		listeners[ service ].push( callback );
+		if ( listeners[ service ].indexOf( callback ) === -1 ) {
+			listeners[ service ].push( callback );
+		}
+
+		if ( service === 'alarmChange' && gotAlarmStatus() ) {
+			callback( alarmStatus );
+		} else if ( service === 'climateChange' && gotClimateData() ) {
+			callback( climateData );
+		}
 	},
 
 	/**
@@ -225,11 +284,18 @@ var publicApi = {
 	 * @returns {Error} - if something goes wrong
 	 */
 	off: function( service, callback ) {
-		if ( !listeners[ service ] ) return new Error( 'No such service! Unsubscribe from alarmChange or climateChange!' );
-		if ( typeof callback == 'function' ) {
+		"use strict";
+
+		if ( !listeners[ service ] ) {
+			return new Error( 'No such service! Unsubscribe from alarmChange or climateChange!' );
+		}
+
+		if ( typeof callback === 'function' ) {
 			var i = listeners[ service ].indexOf( callback );
-			if ( i != -1 ) listeners[ service ].splice( i, 1 );
-		} else if ( typeof callback == 'undefined' ) {
+			if ( i !== -1 ) {
+				listeners[ service ].splice( i, 1 );
+			}
+		} else if ( typeof callback === 'undefined' ) {
 			listeners[ service ] = [];
 		}
 	},
@@ -240,8 +306,14 @@ var publicApi = {
 	 * @returns {*}
 	 */
 	get: function( service ) {
-		if ( service == 'alarmStatus' ) return getAlarmStatus();
-		if ( service == 'climateData' ) return getClimateData();
+		"use strict";
+
+		if ( service === 'alarmStatus' ) {
+			return getAlarmStatus();
+		}
+		if ( service === 'climateData' ) {
+			return getClimateData();
+		}
 
 		return Promise.reject( 'No such service! Use alarmStatus or climateData' );
 	}
@@ -253,9 +325,14 @@ var publicApi = {
  * @returns {{on: on, off: off, get: get}}
  */
 function setup ( options ) {
+	"use strict";
+
 	config = objectAssign( defaults, options );
 
-	if ( !config.username && !config.password ) throw "Missing required username and password for verisure api";
+	if ( !config.username && !config.password ) {
+		throw "Missing required username and password for verisure api";
+	}
+
 	// form data for login
 	formData = {
 		j_username: config.username,
